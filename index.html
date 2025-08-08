@@ -31,7 +31,7 @@ h1{text-align: center;}
 	border-right: 1px solid #aaa;
 	border-bottom: 1px solid #aaa;
 }
-@media print{form{display: none;}body{width: 708px;}}
+@media print{form{display: none;}body{width: 708px;} .info-section{display: none;}}
 
 /* 颜色区分样式 */
 .new-study { color: #007700; font-weight: bold; }
@@ -122,7 +122,7 @@ h1{text-align: center;}
         <tr><th id="totalListLabel">List 总数</th><td><input id="totalList" value="42"></td></tr>
         <tr><th id="reverseLabel">是否逆序</th><td><input id="reverse" type="checkbox"></td></tr>
         <tr><th id="colorLabel">颜色区分</th><td><input id="colorEnabled" type="checkbox" checked></td></tr>
-        <tr><th id="weekStartLabel">周日第一天</th><td><input id="sundayFirst" type="checkbox" ></td></tr>
+        <tr><th id="weekStartLabel">周日第一天</th><td><input id="sundayFirst" type="checkbox" checked></td></tr>
         <tr><th id="intervalLabel">复习间隔</th><td><input id="reviewInterval" value="0,1,3,7,14,25" title="复习间隔（天数），用逗号分隔"></td></tr>
         <tr><th id="actionLabel">操作</th><td>
             <button type="button" id="generate">生成</button>
@@ -421,12 +421,12 @@ function renderCalendar(){
     
     document.getElementById("mainTitle").textContent = document.getElementById("plan").value || languages[currentLang].mainTitle;
     
-    // 计算需要的总天数，考虑最大复习间隔
-    const maxInterval = Math.max(...reviewIntervals); // 最大复习间隔
+    // 计算需要的总天数
     const studyDays = Math.ceil(totalList / listPerDay); // 学习天数
+    const maxInterval = Math.max(...reviewIntervals); // 最大复习间隔
     const lastReviewDay = weekday + studyDays - 1 + maxInterval; // 最后一个复习任务的日期索引
     const totalDays = Math.ceil((lastReviewDay + 1) / 7) * 7; // 向上取整到完整的周
-
+    
     for (let i = 0; i < totalDays; i++) {
         const currentDay = new Date(firstLineSunday.getTime() + i * 86400000);
         const dayDiv = document.createElement("div");
@@ -452,7 +452,9 @@ function renderCalendar(){
         if(colorEnabled){
             content = '<span class="new-study">' + content + '</span>';
         }
-        calendar.children[weekday + i].innerHTML += '<br>' + content;
+        if (weekday + i < calendar.children.length) {
+            calendar.children[weekday + i].innerHTML += '<br>' + content;
+        }
     }
 
     // 复习任务 - 使用自定义间隔
@@ -487,28 +489,122 @@ document.getElementById("generate").addEventListener("click", function(e) {
 
 // 获取安全的文件名
 function getSafeFileName() {
-    const planName = document.getElementById("plan").value || languages[currentLang].mainTitle;
-    return planName.replace(/[<>:"/\\|?*]/g, '-'); // 替换不安全的文件名字符
+    const planName = document.getElementById("plan").value.trim();
+    const fileName = planName || languages[currentLang].mainTitle;
+    return fileName.replace(/[<>:"/\\|?*]/g, '-'); // 替换不安全的文件名字符
 }
 
 // 导出PNG
 document.getElementById("exportPNG").addEventListener("click", function(){
-    html2canvas(document.querySelector("#output")).then(canvas => {
+    // 创建一个临时容器包含标题和日历
+    const tempContainer = document.createElement("div");
+    tempContainer.style.cssText = `
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+        background: white;
+        padding: 20px;
+        font-family: Verdana;
+    `;
+    
+    // 复制标题
+    const titleClone = document.getElementById("mainTitle").cloneNode(true);
+    titleClone.style.cssText = "text-align: center; margin-bottom: 20px; font-size: 24px; color: #333;";
+    
+    // 复制日历输出区域
+    const outputClone = document.getElementById("output").cloneNode(true);
+    
+    tempContainer.appendChild(titleClone);
+    tempContainer.appendChild(outputClone);
+    document.body.appendChild(tempContainer);
+    
+    html2canvas(tempContainer, {
+        backgroundColor: 'white',
+        scale: 2 // 提高清晰度
+    }).then(canvas => {
         const link = document.createElement("a");
         link.download = getSafeFileName() + ".png";
         link.href = canvas.toDataURL("image/png");
         link.click();
+        
+        // 清理临时容器
+        document.body.removeChild(tempContainer);
     });
 });
 
 // 导出PDF
 document.getElementById("exportPDF").addEventListener("click", function(){
-    html2canvas(document.querySelector("#output")).then(canvas => {
+    // 创建一个临时容器包含标题和日历
+    const tempContainer = document.createElement("div");
+    tempContainer.style.cssText = `
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+        background: white;
+        padding: 20px;
+        font-family: Verdana;
+        width: 750px;
+    `;
+    
+    // 复制标题
+    const titleClone = document.getElementById("mainTitle").cloneNode(true);
+    titleClone.style.cssText = "text-align: center; margin-bottom: 20px; font-size: 24px; color: #333;";
+    
+    // 复制日历输出区域并调整样式
+    const outputClone = document.getElementById("output").cloneNode(true);
+    outputClone.style.cssText = "width: 707px; font-family: Verdana; font-size: 12px; border-left: 1px solid #aaa;";
+    
+    tempContainer.appendChild(titleClone);
+    tempContainer.appendChild(outputClone);
+    document.body.appendChild(tempContainer);
+    
+    html2canvas(tempContainer, {
+        backgroundColor: 'white',
+        scale: 1.5, // 适中的缩放比例
+        useCORS: true,
+        allowTaint: true,
+        width: 750,
+        height: tempContainer.scrollHeight + 40
+    }).then(canvas => {
         const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('l', 'pt', [canvas.width, canvas.height]);
+        
+        // 计算PDF尺寸 - 使用A4纸张的横向布局
+        const imgWidth = 297; // A4纸宽度(mm) - 横向
+        const imgHeight = 210; // A4纸高度(mm) - 横向
+        
+        // 计算图片的实际尺寸（转换为mm）
+        const canvasWidth = canvas.width;
+        const canvasHeight = canvas.height;
+        
+        // 计算缩放比例，确保图片完全适应页面
+        const scaleX = imgWidth / (canvasWidth * 0.264583); // px转mm的比例
+        const scaleY = imgHeight / (canvasHeight * 0.264583);
+        const scale = Math.min(scaleX, scaleY, 1); // 选择较小的缩放比例，但不放大
+        
+        // 计算实际显示尺寸
+        const displayWidth = (canvasWidth * 0.264583) * scale;
+        const displayHeight = (canvasHeight * 0.264583) * scale;
+        
+        // 居中显示
+        const offsetX = (imgWidth - displayWidth) / 2;
+        const offsetY = (imgHeight - displayHeight) / 2;
+        
+        // 创建PDF
+        const pdf = new jsPDF('l', 'mm', 'a4'); // 横向A4
         const imgData = canvas.toDataURL('image/png');
-        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+        
+        pdf.addImage(imgData, 'PNG', offsetX, offsetY, displayWidth, displayHeight);
         pdf.save(getSafeFileName() + ".pdf");
+        
+        // 清理临时容器
+        document.body.removeChild(tempContainer);
+    }).catch(error => {
+        console.error('PDF导出失败:', error);
+        // 清理临时容器
+        if (document.body.contains(tempContainer)) {
+            document.body.removeChild(tempContainer);
+        }
+        alert('PDF导出失败，请重试');
     });
 });
 
