@@ -52,6 +52,20 @@ h1{text-align: center;}
     background: #e0e0e0;
 }
 
+/* 恢复默认值按钮样式 */
+.restore-default {
+    background: #e8e8e8;
+    border: 1px solid #999;
+    padding: 2px 8px;
+    cursor: pointer;
+    border-radius: 3px;
+    font-size: 11px;
+    margin-left: 5px;
+}
+.restore-default:hover {
+    background: #d8d8d8;
+}
+
 /* 说明文档样式 */
 .info-section {
     clear: both;
@@ -122,15 +136,19 @@ h1{text-align: center;}
         <tr><th id="totalListLabel">List 总数</th><td><input id="totalList" value="42"></td></tr>
         <tr><th id="reverseLabel">是否逆序</th><td><input id="reverse" type="checkbox"></td></tr>
         <tr><th id="colorLabel">颜色区分</th><td><input id="colorEnabled" type="checkbox" checked></td></tr>
-        <tr><th id="weekStartLabel">周日第一天</th><td><input id="sundayFirst" type="checkbox" checked></td></tr>
-        <tr><th id="intervalLabel">复习间隔</th><td><input id="reviewInterval" value="0,1,3,7,14,25" title="复习间隔（天数），用逗号分隔"></td></tr>
+        <tr><th id="weekStartLabel">周日第一天</th><td><input id="sundayFirst" type="checkbox"></td></tr>
+        <tr><th id="intervalLabel">复习间隔</th><td>
+            <input id="reviewInterval" value="0,1,3,7,14,25" title="复习间隔（天数），用逗号分隔">
+            <button hidden="true"  type="button" class="restore-default" id="restoreDefaultBtn" onclick="restoreDefaultReviewInterval()">恢复默认复习间隔</button>
+        </td></tr>
         <tr><th id="actionLabel">操作</th><td>
-            <button type="button" id="generate">生成</button>
-            <button type="button" onclick="window.print()" id="printBtn">打印</button>
+           <button type="button" onclick="window.print()" id="printBtn">打印</button>
             <button type="button" id="exportPNG">导出PNG</button>
             <button type="button" id="exportPDF">导出PDF</button>
             <button type="button" id="exportExcel">导出Excel</button>
             <button type="button" id="exportHTML">导出HTML</button>
+            <button type="button" id="restoreDefaultReviewInterval" onclick="restoreDefaultReviewInterval()">恢复默认复习间隔</button>
+           
         </td></tr>
         </tbody>
     </table>
@@ -153,7 +171,7 @@ h1{text-align: center;}
         <li>3. 输入总的List数量</li>
         <li>4. 设置复习间隔（默认：0,1,3,7,14,25天），可根据需要调整</li>
         <li>5. 勾选相关选项（逆序、颜色区分、周日第一天）</li>
-        <li>6. 点击生成按钮，系统会自动安排学习和复习计划</li>
+        <li>6. 设置相关配置，系统会立即自动安排学习和复习计划</li>
         <li>7. 可导出为PNG、PDF、Excel或HTML格式保存使用</li>
     </ul>
 </div>
@@ -187,6 +205,9 @@ h1{text-align: center;}
 <script src="./js/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="./js/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
+// 默认复习间隔
+const DEFAULT_REVIEW_INTERVAL = "0,1,3,7,14,25";
+
 // 语言配置
 const languages = {
     zh: {
@@ -202,13 +223,14 @@ const languages = {
         weekStartLabel: "周日第一天",
         intervalLabel: "复习间隔",
         actionLabel: "操作",
-        generate: "生成",
+        restoreDefaultReviewInterval: "恢复默认复习间隔",
         printBtn: "打印",
         exportPNG: "导出PNG",
         exportPDF: "导出PDF",
         exportExcel: "导出Excel",
         exportHTML: "导出HTML",
         langBtn: "English",
+        restoreDefaultBtn: "恢复默认",
         days: ["周日", "周一", "周二", "周三", "周四", "周五", "周六"],
         daysLong: ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"],
         // 使用说明
@@ -219,7 +241,7 @@ const languages = {
             "3. 输入总的List数量",
             "4. 设置复习间隔（默认：0,1,3,7,14,25天），可根据需要调整",
             "5. 勾选相关选项（逆序、颜色区分、周日第一天）",
-            "6. 点击生成按钮，系统会自动安排学习和复习计划",
+            "6. 设置相关配置，系统会立即自动安排学习和复习计划",
             "7. 可导出为PNG、PDF、Excel或HTML格式保存使用"
         ],
         // 理论基础
@@ -250,13 +272,14 @@ const languages = {
         weekStartLabel: "Sunday First",
         intervalLabel: "Review Interval",
         actionLabel: "Actions",
-        generate: "Generate",
+        restoreDefaultReviewInterval: "Restore default Review Interval",
         printBtn: "Print",
         exportPNG: "Export PNG",
         exportPDF: "Export PDF",
         exportExcel: "Export Excel",
         exportHTML: "Export HTML",
         langBtn: "中文",
+        restoreDefaultBtn: "Restore Default",
         days: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
         daysLong: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
         // Usage Instructions
@@ -267,7 +290,7 @@ const languages = {
             "3. Enter total number of lists",
             "4. Set review intervals (default: 0,1,3,7,14,25 days), adjustable as needed",
             "5. Check relevant options (reverse order, color coding, Sunday first)",
-            "6. Click generate button to automatically arrange study and review schedule",
+            "6. Set the relevant configurations, and the system will automatically arrange the study and review schedule immediately.",
             "7. Export as PNG, PDF, Excel or HTML format for later use"
         ],
         // Theory Background
@@ -289,9 +312,59 @@ const languages = {
 
 let currentLang = 'zh';
 
+// 保存设置到localStorage
+function saveSettings() {
+    const settings = {
+        plan: document.getElementById("plan").value,
+        book: document.getElementById("book").value,
+        startDate: document.getElementById("startDate").value,
+        listPerDay: document.getElementById("listPerDay").value,
+        totalList: document.getElementById("totalList").value,
+        reverse: document.getElementById("reverse").checked,
+        colorEnabled: document.getElementById("colorEnabled").checked,
+        sundayFirst: document.getElementById("sundayFirst").checked,
+        reviewInterval: document.getElementById("reviewInterval").value,
+        currentLang: currentLang
+    };
+    localStorage.setItem('studyPlanSettings', JSON.stringify(settings));
+}
+
+// 从localStorage加载设置
+function loadSettings() {
+    const savedSettings = localStorage.getItem('studyPlanSettings');
+    if (savedSettings) {
+        try {
+            const settings = JSON.parse(savedSettings);
+            document.getElementById("plan").value = settings.plan || "Your title";
+            document.getElementById("book").value = settings.book || "L";
+            document.getElementById("startDate").value = settings.startDate || new Date().toISOString().slice(0, 10);
+            document.getElementById("listPerDay").value = settings.listPerDay || "2";
+            document.getElementById("totalList").value = settings.totalList || "42";
+            document.getElementById("reverse").checked = settings.reverse || false;
+            document.getElementById("colorEnabled").checked = settings.colorEnabled !== undefined ? settings.colorEnabled : true;
+            document.getElementById("sundayFirst").checked = settings.sundayFirst !== undefined ? settings.sundayFirst : true;
+            document.getElementById("reviewInterval").value = settings.reviewInterval || DEFAULT_REVIEW_INTERVAL;
+            currentLang = settings.currentLang || 'zh';
+        } catch (e) {
+            console.error('加载设置失败:', e);
+        }
+    } else {
+        // 如果没有保存的设置，使用默认值
+        document.getElementById("startDate").value = new Date().toISOString().slice(0, 10);
+    }
+}
+
+// 恢复默认复习间隔
+function restoreDefaultReviewInterval() {
+    document.getElementById("reviewInterval").value = DEFAULT_REVIEW_INTERVAL;
+    saveSettings();
+    renderCalendar();
+}
+
 function toggleLanguage() {
     currentLang = currentLang === 'zh' ? 'en' : 'zh';
     updateLanguage();
+    saveSettings();
     renderCalendar();
 }
 
@@ -311,13 +384,14 @@ function updateLanguage() {
     document.getElementById('weekStartLabel').textContent = lang.weekStartLabel;
     document.getElementById('intervalLabel').textContent = lang.intervalLabel;
     document.getElementById('actionLabel').textContent = lang.actionLabel;
-    document.getElementById('generate').textContent = lang.generate;
+    document.getElementById('restoreDefaultReviewInterval').textContent = lang.restoreDefaultReviewInterval;
     document.getElementById('printBtn').textContent = lang.printBtn;
     document.getElementById('exportPNG').textContent = lang.exportPNG;
     document.getElementById('exportPDF').textContent = lang.exportPDF;
     document.getElementById('exportExcel').textContent = lang.exportExcel;
     document.getElementById('exportHTML').textContent = lang.exportHTML;
     document.getElementById('langBtn').textContent = lang.langBtn;
+    document.getElementById('restoreDefaultBtn').textContent = lang.restoreDefaultBtn;
     
     // 更新说明文档
     updateDocumentation();
@@ -474,15 +548,21 @@ function renderCalendar(){
 }
 
 // 初始化
-document.getElementById("startDate").value = new Date().toISOString().slice(0, 10);
+loadSettings(); // 先加载保存的设置
 document.getElementById("reviewInterval").title = languages[currentLang === 'zh' ? 'zh' : 'en'].intervalLabel;
 updateLanguage();
 renderCalendar();
 
-// 事件监听
-document.getElementById("sidebar").addEventListener("input", renderCalendar);
-document.getElementById("sidebar").addEventListener("change", renderCalendar);
-document.getElementById("generate").addEventListener("click", function(e) {
+// 事件监听 - 添加保存设置
+document.getElementById("sidebar").addEventListener("input", function() {
+    saveSettings();
+    renderCalendar();
+});
+document.getElementById("sidebar").addEventListener("change", function() {
+    saveSettings();
+    renderCalendar();
+});
+document.getElementById("restoreDefaultReviewInterval").addEventListener("click", function(e) {
     e.preventDefault(); 
     renderCalendar();
 });
