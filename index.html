@@ -52,20 +52,6 @@ h1{text-align: center;}
     background: #e0e0e0;
 }
 
-/* 恢复默认值按钮样式 */
-.restore-default {
-    background: #e8e8e8;
-    border: 1px solid #999;
-    padding: 2px 8px;
-    cursor: pointer;
-    border-radius: 3px;
-    font-size: 11px;
-    margin-left: 5px;
-}
-.restore-default:hover {
-    background: #d8d8d8;
-}
-
 /* 说明文档样式 */
 .info-section {
     clear: both;
@@ -139,16 +125,14 @@ h1{text-align: center;}
         <tr><th id="weekStartLabel">周日第一天</th><td><input id="sundayFirst" type="checkbox"></td></tr>
         <tr><th id="intervalLabel">复习间隔</th><td>
             <input id="reviewInterval" value="0,1,3,7,14,25" title="复习间隔（天数），用逗号分隔">
-            <button hidden="true"  type="button" class="restore-default" id="restoreDefaultBtn" onclick="restoreDefaultReviewIntervalFunction()">恢复默认复习间隔</button>
         </td></tr>
         <tr><th id="actionLabel">操作</th><td>
-           <button type="button" onclick="window.print()" id="printBtn">打印</button>
+            <button type="button" onclick="window.print()" id="printBtn">打印</button>
             <button type="button" id="exportPNG">导出PNG</button>
             <button type="button" id="exportPDF">导出PDF</button>
             <button type="button" id="exportExcel">导出Excel</button>
             <button type="button" id="exportHTML">导出HTML</button>
             <button type="button" id="restoreDefaultReviewInterval" onclick="restoreDefaultReviewIntervalFunction()">恢复默认复习间隔</button>
-           
         </td></tr>
         </tbody>
     </table>
@@ -230,7 +214,6 @@ const languages = {
         exportExcel: "导出Excel",
         exportHTML: "导出HTML",
         langBtn: "English",
-        restoreDefaultBtn: "恢复默认",
         days: ["周日", "周一", "周二", "周三", "周四", "周五", "周六"],
         daysLong: ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"],
         // 使用说明
@@ -272,14 +255,13 @@ const languages = {
         weekStartLabel: "Sunday First",
         intervalLabel: "Review Interval",
         actionLabel: "Actions",
-        restoreDefaultReviewInterval: "Restore default Review Interval",
+        restoreDefaultReviewInterval: "Restore Default Review Interval",
         printBtn: "Print",
         exportPNG: "Export PNG",
         exportPDF: "Export PDF",
         exportExcel: "Export Excel",
         exportHTML: "Export HTML",
         langBtn: "中文",
-        restoreDefaultBtn: "Restore Default",
         days: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
         daysLong: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
         // Usage Instructions
@@ -391,7 +373,6 @@ function updateLanguage() {
     document.getElementById('exportExcel').textContent = lang.exportExcel;
     document.getElementById('exportHTML').textContent = lang.exportHTML;
     document.getElementById('langBtn').textContent = lang.langBtn;
-    document.getElementById('restoreDefaultBtn').textContent = lang.restoreDefaultBtn;
     
     // 更新说明文档
     updateDocumentation();
