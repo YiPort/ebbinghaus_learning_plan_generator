@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>原始学习计划生成器 · 颜色区分版</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: sans-serif; margin: 20px; background: #fafafa; color: #222; }
+    .controls { margin-bottom: 10px; }
+    button { margin-right: 8px; padding: 6px 12px; }
+    #calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    #calendar div { padding: 6px; border: 1px solid #ccc; min-height: 60px; font-size: 13px; position: relative; }
+    .date { font-size: 11px; position: absolute; top: 2px; right: 4px; }
+    .item { display: block; margin-top: 14px; }
+    .first { color: #2563eb; font-weight: bold; }
+    .review { color: #ea580c; }
+    .color-on .first { background-color: rgba(37,99,235,0.1); }
+    .color-on .review { background-color: rgba(234,88,12,0.1); }
+    @media print {
+      body { background: #fff; }
+      .controls { display: none; }
+      #calendar { gap: 2px; }
+      #calendar div { padding: 4px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="controls">
+    <button id="generate">生成</button>
+    <button id="export">导出 CSV</button>
+    <button id="print">打印</button>
+    <label><input type="checkbox" id="colorMode"> 颜色区分</label>
+  </div>
+  <div id="calendar"></div>
+
+  <script>
+    // 极简逻辑：模拟原逻辑，添加颜色区分
+    const calendarEl = document.getElementById('calendar');
+    const generateBtn = document.getElementById('generate');
+    const exportBtn = document.getElementById('export');
+    const printBtn = document.getElementById('print');
+    const colorMode = document.getElementById('colorMode');
+    let events = [];
+
+    function generate() {
+      // 示例生成：10 条、每天 2 条、间隔 0,1,2,4
+      const total = 60;
+      const perDay = 2;
+      const intervals = [0,1,2,4];
+      const start = new Date();
+      events = {};
+      let last = start;
+      for(let i=1;i<=total;i++){
+        intervals.forEach(offset=>{
+          const d = new Date(start.getTime() + (Math.floor((i-1)/perDay) + offset)*864e5);
+          const key = d.toISOString().slice(0,10);
+          if(!events[key]) events[key] = [];
+          events[key].push({label:'L'+i, offset, type: offset===0 ? 'first' : 'review'});
+          if(d > last) last = d;
+        });
+      }
+      render(events, start, last);
+    }
+
+    function render(events, start, last) {
+      calendarEl.innerHTML = '';
+      const sd = new Date(start); sd.setDate(sd.getDate() - sd.getDay());
+      const ed = new Date(last); ed.setDate(ed.getDate() + (6 - ed.getDay()));
+      for(let d = new Date(sd); d <= ed; d.setDate(d.getDate()+1)){
+        const cell = document.createElement('div');
+        const key = d.toISOString().slice(0,10);
+        const dateDiv = document.createElement('div');
+        dateDiv.textContent = key;
+        dateDiv.className = 'date';
+        cell.appendChild(dateDiv);
+        (events[key] || []).forEach(ev => {
+          const span = document.createElement('span');
+          span.textContent = ev.label + (ev.offset===0 ? '' : ' R'+ev.offset);
+          span.className = 'item ' + ev.type;
+          cell.appendChild(span);
+        });
+        calendarEl.appendChild(cell);
+      }
+      toggleColor();
+    }
+
+    function exportCSV() {
+      if(!events) return alert('请先生成');
+      let rows = 'date,item,type,offset\n';
+      Object.entries(events).forEach(([date, arr]) => {
+        arr.forEach(ev => { rows += `${date},${ev.label},${ev.type},${ev.offset}\n`; });
+      });
+      const blob = new Blob([rows], { type:'text/csv;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'plan.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function toggleColor(){
+      if(colorMode.checked) calendarEl.classList.add('color-on');
+      else calendarEl.classList.remove('color-on');
+    }
+
+    generateBtn.onclick = generate;
+    exportBtn.onclick = exportCSV;
+    printBtn.onclick = () => window.print();
+    colorMode.onchange = toggleColor;
+    window.onload = generate;
+  </script>
+</body>
+</html>
