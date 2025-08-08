@@ -51,6 +51,61 @@ h1{text-align: center;}
 .lang-switch:hover {
     background: #e0e0e0;
 }
+
+/* 说明文档样式 */
+.info-section {
+    clear: both;
+    margin-top: 30px;
+    padding: 20px;
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+.info-section h2 {
+    margin-top: 0;
+    color: #333;
+    font-size: 18px;
+}
+.info-section h3 {
+    color: #666;
+    font-size: 16px;
+    margin-top: 20px;
+}
+.info-section ul {
+    padding-left: 20px;
+}
+.info-section li {
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+.info-section p {
+    line-height: 1.6;
+    margin-bottom: 15px;
+}
+.collapse-header {
+    cursor: pointer;
+    background: #e8e8e8;
+    padding: 10px 15px;
+    margin: -20px -20px 20px -20px;
+    border-bottom: 1px solid #ddd;
+    user-select: none;
+}
+.collapse-header:hover {
+    background: #e0e0e0;
+}
+.collapse-content {
+    display: none;
+}
+.collapse-content.expanded {
+    display: block;
+}
+.collapse-arrow {
+    float: right;
+    transition: transform 0.3s;
+}
+.collapse-arrow.expanded {
+    transform: rotate(90deg);
+}
 </style>
 </head>
 <body>
@@ -68,6 +123,7 @@ h1{text-align: center;}
         <tr><th id="reverseLabel">是否逆序</th><td><input id="reverse" type="checkbox"></td></tr>
         <tr><th id="colorLabel">颜色区分</th><td><input id="colorEnabled" type="checkbox" checked></td></tr>
         <tr><th id="weekStartLabel">周日第一天</th><td><input id="sundayFirst" type="checkbox" ></td></tr>
+        <tr><th id="intervalLabel">复习间隔</th><td><input id="reviewInterval" value="0,1,3,7,14,25" title="复习间隔（天数），用逗号分隔"></td></tr>
         <tr><th id="actionLabel">操作</th><td>
             <button type="button" id="generate">生成</button>
             <button type="button" onclick="window.print()" id="printBtn">打印</button>
@@ -88,11 +144,48 @@ h1{text-align: center;}
     <div id="calendar"></div>
 </div>
 
+<!-- 使用说明 -->
+<div class="info-section">
+    <h2 id="usageTitle">使用说明</h2>
+    <ul id="usageList">
+        <li>1. 填写计划名称和List名称（如：单词、课程等）</li>
+        <li>2. 选择开始日期和每天要学习的List数量</li>
+        <li>3. 输入总的List数量</li>
+        <li>4. 设置复习间隔（默认：0,1,3,7,14,25天），可根据需要调整</li>
+        <li>5. 勾选相关选项（逆序、颜色区分、周日第一天）</li>
+        <li>6. 点击生成按钮，系统会自动安排学习和复习计划</li>
+        <li>7. 可导出为PNG、PDF、Excel或HTML格式保存使用</li>
+    </ul>
+</div>
+
+<!-- 理论基础 -->
+<div class="info-section">
+    <div class="collapse-header" onclick="toggleTheorySection()">
+        <h2 id="theoryTitle"><span class="collapse-arrow">▶</span> 理论基础：艾宾浩斯遗忘曲线</h2>
+        <small id="theoryToggle">点击展开/收起</small>
+    </div>
+    <div class="collapse-content" id="theoryContent">
+        <p id="theoryIntro">遗忘曲线（Forgetting curve）是用于表述记忆中的中长期记忆的遗忘率的一种曲线。这一曲线最早由心理学家赫尔曼·艾宾浩斯通过自己的实验提出。</p>
+        
+        <p id="theoryProcess">记忆的保持在时间上是不同的，有短时记忆和长时记忆两种。输入的信息在经过人的注意过程的学习后，便成为了人的短时的记忆，再经过进一步强化后成为长时记忆。如果不经过及时的复习，这些记住过的东西就会遗忘，而经过了及时的复习，长时记忆就会继续保持下去。</p>
+        
+        <h3 id="theoryResults">遗忘结果：</h3>
+        <ul id="theoryDataList">
+            <li>20分钟后，42%被遗忘掉，58%被记住</li>
+            <li>1小时后，56%被遗忘掉，44%被记住</li>
+            <li>1天后，74%被遗忘掉，26%被记住</li>
+            <li>1周后，77%被遗忘掉，23%被记住</li>
+            <li>1个月后，79%被遗忘掉，21%被记住</li>
+        </ul>
+        
+        <p id="theoryConclusion">因此，科学的复习时间安排对于长期记忆非常重要。本工具基于遗忘曲线原理，帮助您制定科学的学习和复习计划。</p>
+    </div>
+</div>
+
 <script src="./js/jquery-latest.min.js"></script>
 <script src="./js/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="./js/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="./js/xlsx/0.18.5/xlsx.full.min.js"></script>
-
 <script>
 // 语言配置
 const languages = {
@@ -107,6 +200,7 @@ const languages = {
         reverseLabel: "是否逆序",
         colorLabel: "颜色区分",
         weekStartLabel: "周日第一天",
+        intervalLabel: "复习间隔",
         actionLabel: "操作",
         generate: "生成",
         printBtn: "打印",
@@ -116,7 +210,32 @@ const languages = {
         exportHTML: "导出HTML",
         langBtn: "English",
         days: ["周日", "周一", "周二", "周三", "周四", "周五", "周六"],
-        daysLong: ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"]
+        daysLong: ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"],
+        // 使用说明
+        usageTitle: "使用说明",
+        usageContent: [
+            "1. 填写计划名称和List名称（如：单词、课程等）",
+            "2. 选择开始日期和每天要学习的List数量",
+            "3. 输入总的List数量",
+            "4. 设置复习间隔（默认：0,1,3,7,14,25天），可根据需要调整",
+            "5. 勾选相关选项（逆序、颜色区分、周日第一天）",
+            "6. 点击生成按钮，系统会自动安排学习和复习计划",
+            "7. 可导出为PNG、PDF、Excel或HTML格式保存使用"
+        ],
+        // 理论基础
+        theoryTitle: "理论基础：艾宾浩斯遗忘曲线",
+        theoryToggle: "点击展开/收起",
+        theoryIntro: "遗忘曲线（Forgetting curve）是用于表述记忆中的中长期记忆的遗忘率的一种曲线。这一曲线最早由心理学家赫尔曼·艾宾浩斯通过自己的实验提出。",
+        theoryProcess: "记忆的保持在时间上是不同的，有短时记忆和长时记忆两种。输入的信息在经过人的注意过程的学习后，便成为了人的短时的记忆，再经过进一步强化后成为长时记忆。如果不经过及时的复习，这些记住过的东西就会遗忘，而经过了及时的复习，长时记忆就会继续保持下去。",
+        theoryResults: "遗忘结果：",
+        theoryData: [
+            "20分钟后，42%被遗忘掉，58%被记住",
+            "1小时后，56%被遗忘掉，44%被记住", 
+            "1天后，74%被遗忘掉，26%被记住",
+            "1周后，77%被遗忘掉，23%被记住",
+            "1个月后，79%被遗忘掉，21%被记住"
+        ],
+        theoryConclusion: "因此，科学的复习时间安排对于长期记忆非常重要。本工具基于遗忘曲线原理，帮助您制定科学的学习和复习计划。"
     },
     en: {
         pageTitle: "Study Plan Calendar Generator",
@@ -129,6 +248,7 @@ const languages = {
         reverseLabel: "Reverse Order",
         colorLabel: "Color Coding",
         weekStartLabel: "Sunday First",
+        intervalLabel: "Review Interval",
         actionLabel: "Actions",
         generate: "Generate",
         printBtn: "Print",
@@ -138,7 +258,32 @@ const languages = {
         exportHTML: "Export HTML",
         langBtn: "中文",
         days: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-        daysLong: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+        daysLong: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+        // Usage Instructions
+        usageTitle: "Usage Instructions",
+        usageContent: [
+            "1. Enter plan name and list name (e.g., Vocabulary, Lessons, etc.)",
+            "2. Select start date and number of lists to study per day",
+            "3. Enter total number of lists",
+            "4. Set review intervals (default: 0,1,3,7,14,25 days), adjustable as needed",
+            "5. Check relevant options (reverse order, color coding, Sunday first)",
+            "6. Click generate button to automatically arrange study and review schedule",
+            "7. Export as PNG, PDF, Excel or HTML format for later use"
+        ],
+        // Theory Background
+        theoryTitle: "Theory Background: Ebbinghaus Forgetting Curve",
+        theoryToggle: "Click to expand/collapse",
+        theoryIntro: "The forgetting curve is a mathematical formula that describes the rate at which information is forgotten after it is learned. It was first described by Hermann Ebbinghaus through his experiments on memory.",
+        theoryProcess: "Memory retention varies over time, with short-term and long-term memory. Information becomes short-term memory after attention and learning, then becomes long-term memory through further reinforcement. Without timely review, memorized information will be forgotten, but with timely review, long-term memory will continue to be maintained.",
+        theoryResults: "Forgetting Results:",
+        theoryData: [
+            "After 20 minutes, 42% forgotten, 58% retained",
+            "After 1 hour, 56% forgotten, 44% retained",
+            "After 1 day, 74% forgotten, 26% retained", 
+            "After 1 week, 77% forgotten, 23% retained",
+            "After 1 month, 79% forgotten, 21% retained"
+        ],
+        theoryConclusion: "Therefore, scientific review scheduling is crucial for long-term memory. This tool is based on the forgetting curve principle to help you create a scientific study and review plan."
     }
 };
 
@@ -164,6 +309,7 @@ function updateLanguage() {
     document.getElementById('reverseLabel').textContent = lang.reverseLabel;
     document.getElementById('colorLabel').textContent = lang.colorLabel;
     document.getElementById('weekStartLabel').textContent = lang.weekStartLabel;
+    document.getElementById('intervalLabel').textContent = lang.intervalLabel;
     document.getElementById('actionLabel').textContent = lang.actionLabel;
     document.getElementById('generate').textContent = lang.generate;
     document.getElementById('printBtn').textContent = lang.printBtn;
@@ -173,8 +319,58 @@ function updateLanguage() {
     document.getElementById('exportHTML').textContent = lang.exportHTML;
     document.getElementById('langBtn').textContent = lang.langBtn;
     
+    // 更新说明文档
+    updateDocumentation();
+    
     // 更新星期标题 - 根据是否周日第一天来调整
     updateWeekHeaders();
+}
+
+function updateDocumentation() {
+    const lang = languages[currentLang];
+    
+    // 更新使用说明
+    document.getElementById('usageTitle').textContent = lang.usageTitle;
+    const usageList = document.getElementById('usageList');
+    usageList.innerHTML = '';
+    lang.usageContent.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        usageList.appendChild(li);
+    });
+    
+    // 更新理论基础
+    document.getElementById('theoryTitle').innerHTML = `<span class="collapse-arrow">▶</span> ${lang.theoryTitle}`;
+    document.getElementById('theoryToggle').textContent = lang.theoryToggle;
+    document.getElementById('theoryIntro').textContent = lang.theoryIntro;
+    document.getElementById('theoryProcess').textContent = lang.theoryProcess;
+    document.getElementById('theoryResults').textContent = lang.theoryResults;
+    
+    const theoryDataList = document.getElementById('theoryDataList');
+    theoryDataList.innerHTML = '';
+    lang.theoryData.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        theoryDataList.appendChild(li);
+    });
+    
+    document.getElementById('theoryConclusion').textContent = lang.theoryConclusion;
+}
+
+// 切换理论基础部分的显示/隐藏
+function toggleTheorySection() {
+    const content = document.getElementById('theoryContent');
+    const arrow = document.querySelector('.collapse-arrow');
+    
+    if (content.classList.contains('expanded')) {
+        content.classList.remove('expanded');
+        arrow.classList.remove('expanded');
+        arrow.textContent = '▶';
+    } else {
+        content.classList.add('expanded');
+        arrow.classList.add('expanded');
+        arrow.textContent = '▼';
+    }
 }
 
 function updateWeekHeaders() {
@@ -196,6 +392,18 @@ function renderCalendar(){
     const colorEnabled = document.getElementById("colorEnabled").checked;
     const sundayFirst = document.getElementById("sundayFirst").checked;
     
+    // 解析自定义复习间隔
+    const intervalInput = document.getElementById("reviewInterval").value;
+    let reviewIntervals;
+    try {
+        reviewIntervals = intervalInput.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x));
+        if (reviewIntervals.length === 0) {
+            reviewIntervals = [0, 1, 3, 7, 14, 25]; // 默认间隔
+        }
+    } catch (e) {
+        reviewIntervals = [0, 1, 3, 7, 14, 25]; // 出错时使用默认间隔
+    }
+    
     const startDateObj = new Date(startDate);
     let weekday = startDateObj.getDay();
     
@@ -213,8 +421,12 @@ function renderCalendar(){
     
     document.getElementById("mainTitle").textContent = document.getElementById("plan").value || languages[currentLang].mainTitle;
     
-    const totalDays = Math.ceil(totalList / listPerDay) + 25 + weekday;
-    
+    // 计算需要的总天数，考虑最大复习间隔
+    const maxInterval = Math.max(...reviewIntervals); // 最大复习间隔
+    const studyDays = Math.ceil(totalList / listPerDay); // 学习天数
+    const lastReviewDay = weekday + studyDays - 1 + maxInterval; // 最后一个复习任务的日期索引
+    const totalDays = Math.ceil((lastReviewDay + 1) / 7) * 7; // 向上取整到完整的周
+
     for (let i = 0; i < totalDays; i++) {
         const currentDay = new Date(firstLineSunday.getTime() + i * 86400000);
         const dayDiv = document.createElement("div");
@@ -243,14 +455,14 @@ function renderCalendar(){
         calendar.children[weekday + i].innerHTML += '<br>' + content;
     }
 
-    // 复习任务
+    // 复习任务 - 使用自定义间隔
     const plan2 = [...plan];
     for (let i = 0; i < plan2.length; i++){
         let reviewContent = '*' + book + ' ' + plan2[reverse ? plan2.length - i - 1 : i];
         if(colorEnabled){
             reviewContent = '<span class="review">' + reviewContent + '</span>';
         }
-        [0, 1, 3, 7, 14, 25].forEach(offset => {
+        reviewIntervals.forEach(offset => {
             const targetIndex = weekday + i + offset;
             if (targetIndex < calendar.children.length) {
                 calendar.children[targetIndex].innerHTML += '<br>' + reviewContent;
@@ -261,6 +473,7 @@ function renderCalendar(){
 
 // 初始化
 document.getElementById("startDate").value = new Date().toISOString().slice(0, 10);
+document.getElementById("reviewInterval").title = languages[currentLang === 'zh' ? 'zh' : 'en'].intervalLabel;
 updateLanguage();
 renderCalendar();
 
