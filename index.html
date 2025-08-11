@@ -14,24 +14,75 @@ select{width: 142px;}
 h1{text-align: center;}
 #sidebar{float: left;width: 270px;margin-right: 10px;margin-top: 70px;}
 #output{width: 707px;font-family: Verdana;float: left;font-size: 12px;}
-#output>span{
+
+/* 表头样式 - 使用flex布局但保持表格外观 */
+.week-headers {
+    display: flex;
+    width: 707px;
+    border-left: 1px solid #aaa;
+}
+.week-headers span{
 	width: 100px;
-	float: left;
 	height: 20px;
 	border: 1px solid #aaa;
 	border-left: none;
 	text-align: center;
+	box-sizing: border-box;
+	line-height: 20px;
+	background-color: #f5f5f5;
+	font-weight: bold;
 }
-#output{border-left: 1px solid #aaa;}
+/* 修复第一个表头的左边框 */
+.week-headers span:first-child{
+	border-left: 1px solid #aaa;
+}
+
+/* 修改后的日历样式 - 支持自适应高度 */
+#calendar {
+    display: flex;
+    flex-wrap: wrap;
+    width: 707px;
+    border-left: 1px solid #aaa;
+}
 #calendar>div{
-	width: 97px;
-	height: 114px;
-	float: left;
-	padding-left: 3px;
+	width: 100px;
+	min-height: 114px; /* 改为最小高度 */
+	height: auto; /* 允许自动调整高度 */
+	float: none; /* 移除浮动 */
+	padding: 3px;
 	border-right: 1px solid #aaa;
 	border-bottom: 1px solid #aaa;
+	box-sizing: border-box;
+	overflow-wrap: break-word; /* 允许长单词换行 */
+	word-wrap: break-word; /* 兼容性 */
+	line-height: 1.2; /* 调整行高 */
 }
-@media print{form{display: none;}body{width: 708px;} .info-section{display: none;}}
+/* 修复每行第一个单元格的左边框 */
+#calendar>div:nth-child(7n+1){
+	border-left: 1px solid #aaa;
+}
+
+/* 确保每行7个格子的高度一致 */
+#calendar>div:nth-child(7n+1),
+#calendar>div:nth-child(7n+2),
+#calendar>div:nth-child(7n+3),
+#calendar>div:nth-child(7n+4),
+#calendar>div:nth-child(7n+5),
+#calendar>div:nth-child(7n+6),
+#calendar>div:nth-child(7n+7) {
+    display: flex;
+    flex-direction: column;
+}
+
+@media print{
+    form{display: none;}
+    body{width: 708px;} 
+    .info-section{display: none;}
+    #calendar>div{
+        min-height: 100px; /* 打印时使用较小的最小高度 */
+        font-size: 11px; /* 打印时字体稍小 */
+    }
+}
 
 /* 颜色区分样式 */
 .new-study { color: #007700; font-weight: bold; }
@@ -141,8 +192,10 @@ h1{text-align: center;}
 
 <h1 id="mainTitle">学习计划时间表生成器</h1>
 <div id="output">
-    <span id="day0">Sun</span><span id="day1">Mon</span><span id="day2">Tue</span>
-    <span id="day3">Wed</span><span id="day4">Thu</span><span id="day5">Fri</span><span id="day6">Sat</span>
+    <div class="week-headers">
+        <span id="day0">Sun</span><span id="day1">Mon</span><span id="day2">Tue</span>
+        <span id="day3">Wed</span><span id="day4">Thu</span><span id="day5">Fri</span><span id="day6">Sat</span>
+    </div>
     <div id="calendar"></div>
 </div>
 
@@ -170,7 +223,7 @@ h1{text-align: center;}
         <p id="theoryIntro">遗忘曲线（Forgetting curve）是用于表述记忆中的中长期记忆的遗忘率的一种曲线。这一曲线最早由心理学家赫尔曼·艾宾浩斯通过自己的实验提出。</p>
         
         <p id="theoryProcess">记忆的保持在时间上是不同的，有短时记忆和长时记忆两种。输入的信息在经过人的注意过程的学习后，便成为了人的短时的记忆，再经过进一步强化后成为长时记忆。如果不经过及时的复习，这些记住过的东西就会遗忘，而经过了及时的复习，长时记忆就会继续保持下去。</p>
-        
+        <img src="./img/memory.png"  alt="遗忘曲线">
         <h3 id="theoryResults">遗忘结果：</h3>
         <ul id="theoryDataList">
             <li>20分钟后，42%被遗忘掉，58%被记住</li>
@@ -438,6 +491,7 @@ function updateWeekHeaders() {
     }
 }
 
+// 优化后的日历渲染函数
 function renderCalendar(){
     const book = document.getElementById("book").value;
     const startDate = document.getElementById("startDate").value;
@@ -482,10 +536,13 @@ function renderCalendar(){
     const lastReviewDay = weekday + studyDays - 1 + maxInterval; // 最后一个复习任务的日期索引
     const totalDays = Math.ceil((lastReviewDay + 1) / 7) * 7; // 向上取整到完整的周
     
+    // 创建日期格子数组
+    const dayElements = [];
     for (let i = 0; i < totalDays; i++) {
         const currentDay = new Date(firstLineSunday.getTime() + i * 86400000);
         const dayDiv = document.createElement("div");
         dayDiv.innerHTML = (currentDay.getMonth() + 1) + "/" + currentDay.getDate();
+        dayElements.push(dayDiv);
         calendar.appendChild(dayDiv);
     }
 
@@ -507,8 +564,8 @@ function renderCalendar(){
         if(colorEnabled){
             content = '<span class="new-study">' + content + '</span>';
         }
-        if (weekday + i < calendar.children.length) {
-            calendar.children[weekday + i].innerHTML += '<br>' + content;
+        if (weekday + i < dayElements.length) {
+            dayElements[weekday + i].innerHTML += '<br>' + content;
         }
     }
 
@@ -521,10 +578,47 @@ function renderCalendar(){
         }
         reviewIntervals.forEach(offset => {
             const targetIndex = weekday + i + offset;
-            if (targetIndex < calendar.children.length) {
-                calendar.children[targetIndex].innerHTML += '<br>' + reviewContent;
+            if (targetIndex < dayElements.length) {
+                dayElements[targetIndex].innerHTML += '<br>' + reviewContent;
             }
         });
+    }
+    
+    // 确保每行的格子高度一致
+    equalizeRowHeights();
+}
+
+// 确保每行7个格子的高度一致
+function equalizeRowHeights() {
+    const calendar = document.getElementById("calendar");
+    const allDivs = Array.from(calendar.children);
+    
+    // 按行分组（每行7个）
+    for (let row = 0; row < Math.ceil(allDivs.length / 7); row++) {
+        const rowStart = row * 7;
+        const rowEnd = Math.min(rowStart + 7, allDivs.length);
+        const rowDivs = allDivs.slice(rowStart, rowEnd);
+        
+        // 先重置高度
+        rowDivs.forEach(div => {
+            div.style.height = 'auto';
+        });
+        
+        // 等待DOM更新后计算最大高度
+        setTimeout(() => {
+            let maxHeight = 0;
+            rowDivs.forEach(div => {
+                const height = div.offsetHeight;
+                if (height > maxHeight) {
+                    maxHeight = height;
+                }
+            });
+            
+            // 设置统一高度
+            rowDivs.forEach(div => {
+                div.style.height = maxHeight + 'px';
+            });
+        }, 0);
     }
 }
 
@@ -738,14 +832,15 @@ h1 { text-align: center; margin-bottom: 20px; }
     font-size: 12px; 
     width: 700px;
     margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
 }
 .week-header {
     width: 100%;
-    overflow: hidden;
+    display: flex;
 }
 .day-header { 
     width: 100px; 
-    float: left; 
     height: 20px; 
     border: 1px solid #aaa; 
     border-left: none; 
@@ -755,21 +850,25 @@ h1 { text-align: center; margin-bottom: 20px; }
     line-height: 20px;
     box-sizing: border-box;
 }
-.week-row {
-    width: 100%;
-    overflow: hidden;
+.day-header:first-child {
+    border-left: 1px solid #aaa;
 }
 .day-cell { 
     width: 100px; 
-    height: 114px; 
-    float: left; 
+    min-height: 114px; 
+    height: auto;
     padding: 3px; 
     border: 1px solid #aaa; 
     border-left: none;
     border-top: none;
-    overflow: hidden;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
     box-sizing: border-box;
     font-size: 12px;
+    line-height: 1.2;
+}
+.day-cell:nth-child(7n+2) {
+    border-left: 1px solid #aaa;
 }
 .new-study { color: #007700; font-weight: bold; }
 .review { color: #aa0000; }
@@ -788,16 +887,11 @@ h1 { text-align: center; margin-bottom: 20px; }
     
     htmlContent += `</div>`;
     
-    // 添加日期格子 - 按周分行
+    // 添加日期格子
     const calendarDivs = Array.from(document.querySelectorAll("#calendar div"));
-    for (let i = 0; i < calendarDivs.length; i += 7) {
-        htmlContent += `<div class="week-row">`;
-        for (let j = 0; j < 7 && (i + j) < calendarDivs.length; j++) {
-            const el = calendarDivs[i + j];
-            htmlContent += `<div class="day-cell">${el.innerHTML}</div>`;
-        }
-        htmlContent += `</div>`;
-    }
+    calendarDivs.forEach(el => {
+        htmlContent += `<div class="day-cell">${el.innerHTML}</div>`;
+    });
     
     htmlContent += `</div>
 </body>
