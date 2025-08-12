@@ -85,8 +85,13 @@ h1{text-align: center;}
 }
 
 /* 颜色区分样式 */
-.new-study { color: #007700; font-weight: bold; }
-.review { color: #aa0000; }
+.new-study { 
+    color: #007700; 
+    font-weight: bold; 
+}
+.review { 
+    color: #aa0000; 
+}
 
 /* 语言切换按钮样式 */
 .lang-switch {
@@ -578,9 +583,11 @@ function renderCalendar(){
         }
         reviewIntervals.forEach(offset => {
             const targetIndex = weekday + i + offset;
-            if (targetIndex < dayElements.length) {
-                dayElements[targetIndex].innerHTML += '<br>' + reviewContent;
+            if (targetIndex < dayElements.length ) {
+                const separator = colorEnabled ? '' : '<br>';
+                dayElements[targetIndex].innerHTML += separator + reviewContent;
             }
+
         });
     }
     
@@ -865,13 +872,18 @@ h1 { text-align: center; margin-bottom: 20px; }
     word-wrap: break-word;
     box-sizing: border-box;
     font-size: 12px;
-    line-height: 1.2;
+    line-height: 1.1;
 }
 .day-cell:nth-child(7n+2) {
     border-left: 1px solid #aaa;
 }
-.new-study { color: #007700; font-weight: bold; }
-.review { color: #aa0000; }
+.new-study { 
+    color: #007700; 
+    font-weight: bold; 
+}
+.review { 
+    color: #aa0000; 
+}
 @media print { body { margin: 0; } }
 </style>
 </head>
